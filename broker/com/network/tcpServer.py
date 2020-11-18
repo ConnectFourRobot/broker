@@ -13,7 +13,8 @@ class TcpServer:
 
     def listen(self):
         self.__socket.listen(1)
-        (clientsocket, address) = self.__socket.accept()
+        # ToDo: magic number
+        clientsocket = self.__socket.accept()[0]
         return clientsocket
 
 
@@ -37,5 +38,5 @@ class TcpServer:
         return Message(type, size, payload)
     
     def __del__(self):
-        self.__socket.shutdown()
+        #self.__socket.shutdown()
         self.__socket.close()

@@ -8,16 +8,14 @@ from broker.com.serial.serialHandler import SerialHandler
 from broker.com.serial.serialMessageType import SerialMessageType
 
 def main():
-    print('Hello world')
-
-    # init config
+    # init config 
     config = configparser.ConfigParser()
     config.read('config.ini')
     defaultConfig = config['DEFAULT']
 
     # init connections
     tcpServer = TcpServer(defaultConfig['bindingAddress'], int(defaultConfig['port']))
-    serialHandler = SerialHandler(defaultConfig['serialNumber'])
+    serialHandler = SerialHandler(defaultConfig['serialNumber'], defaultConfig['baudRate'])
 
     # start image analysis service
     subprocess.Popen([defaultConfig['imageAnalysisPath'], ""], shell=True)
