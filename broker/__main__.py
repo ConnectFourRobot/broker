@@ -15,10 +15,12 @@ def main():
 
     # init connections
     tcpServer = TcpServer(defaultConfig['bindingAddress'], int(defaultConfig['port']))
-    serialHandler = SerialHandler(defaultConfig['serialNumber'], defaultConfig['baudRate'])
+    # serialHandler = SerialHandler(defaultConfig['serialNumber'], defaultConfig['baudRate'])
 
     # start image analysis service
-    subprocess.Popen([defaultConfig['imageAnalysisPath'], ""], shell=True)
+    subprocess.Popen([defaultConfig['imageAnalysisPath'], 
+        "--height " + defaultConfig['boardHeight'] + " --width " + defaultConfig['boardWidth'] + " --ip " 
+        + defaultConfig['bindingAddress'] + " --port " + defaultConfig['port']], shell=True)
     imageAnalysisService = tcpServer.listen()
     
     # wait for ready message
@@ -28,7 +30,7 @@ def main():
         return
     
     # tell the arduino that we are ready to play
-    serialHandler.send(SerialMessageType.Ready)
+    # serialHandler.send(SerialMessageType.Ready)
     
 
 if __name__ == '__main__':

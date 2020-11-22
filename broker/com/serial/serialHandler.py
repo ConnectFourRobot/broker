@@ -7,7 +7,7 @@ from broker.com.serial import utils
 from broker.com.message import Message
 
 class SerialHandler:
-    def __init__(self, serialNumber: str, baudRate: number):
+    def __init__(self, serialNumber: str, baudRate: int):
         portDescription = utils.findPortBySerialNumber(serialNumber)
         self.__s = serial.Serial(portDescription, baudRate, timeout=None)
 
