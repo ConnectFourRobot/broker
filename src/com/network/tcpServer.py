@@ -1,8 +1,8 @@
 import socket
 import sys
 
-from broker.com.network.networkMessageType import NetworkMessageType
-from broker.com.message import Message
+from com.network.networkMessageType import NetworkMessageType
+from com.message import Message
 
 class TcpServer:
     def __init__(self, address: str, port):

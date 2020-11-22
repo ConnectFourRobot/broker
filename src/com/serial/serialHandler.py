@@ -2,9 +2,9 @@ import serial
 import time
 import sys
 
-from broker.com.serial.serialMessageType import SerialMessageType
-from broker.com.serial import utils
-from broker.com.message import Message
+from com.serial.serialMessageType import SerialMessageType
+from com.serial import utils
+from com.message import Message
 
 class SerialHandler:
     def __init__(self, serialNumber: str, baudRate: int):
