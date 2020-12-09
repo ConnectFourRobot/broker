@@ -1,0 +1,15 @@
+{
+  "name": "vgr-broker",
+  "version": "1.0.0",
+  "description": "This is the service which handles a game and manages the communications of the service",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.oth-regensburg.de/giv31075/vgr-broker"
+  },
+  "author": "Vincent Gierisch",
+  "license": "ISC"
+}

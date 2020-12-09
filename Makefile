@@ -1,12 +1,12 @@
 SRC := src/vgr-broker.py
 
 init:
-	pip install -r requirements.txt
+	npm install
 
 run:
-	@python ${SRC}
+	npm run
 
 clean:
-	rm -rf .pytest_cache .coverage .pytest_cache coverage.xml
+	rm -rf node_modules
 
 .PHONY: init run clean
