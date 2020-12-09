@@ -13,3 +13,4 @@ class SerialMessageType(Enum):
     Abort = 10
     StonesEmpty = 11
     StonesFull = 12
+    Interrupt = 13
