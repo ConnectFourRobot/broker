@@ -4,7 +4,7 @@ init:
 	npm install
 
 run:
-	npm run
+	npm start
 
 clean:
 	rm -rf node_modules
