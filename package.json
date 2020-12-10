@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/node": "14.14.11",
+    "child_process": "1.0.2",
     "config.ini": "0.0.60",
     "net": "1.0.2",
     "serialport": "9.0.3"
