@@ -4,7 +4,7 @@ import ServerNetworkMessage from './com/serverNetworkMessage'
 import * as utils from './utils'
 import { SerialMessageType } from './com/serial/enums'
 import Game from './game/game'
-import { GameSequence, GameDifficulty } from './game/enums'
+import { GameSequence, GameDifficulty, GamePlayer } from './game/enums'
 
 import { exec } from 'child_process'
 
@@ -33,9 +33,6 @@ export default class GameHandler {
         
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
         this._game = new Game(1, 1, 1, GameSequence.Human, GameDifficulty.Easy); // dummy constructor
-
-
-        
     }
 
     public run(): void {
@@ -75,9 +72,21 @@ export default class GameHandler {
     private handleIncomingSerialData(message: ClientNetworkMessage) {
         switch (message.type) {
             case SerialMessageType.StartGame:
-                this.startGame(message.payload);
+                this.initGame(message.payload);
                 break;
-        
+            case SerialMessageType.GridIsEmpty:
+                // check if this is true by sending a capture request
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                );
+            case SerialMessageType.Abort:
+                this.abortGame();
+                break;
+            case SerialMessageType.MoveDone:
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
+                );
+                this.checkGameState();
             default:
                 break;
         }
@@ -88,9 +97,11 @@ export default class GameHandler {
             case NetworkClient.GameClient:
                 switch (message.type) {
                     case BrokerClientMessageType.Register:
-                        
+                        this._game.isRunning = true;
+                        this.sendMoveRequest();
                         break;
-                
+                    case BrokerClientMessageType.Answer:
+                        this.handleClientMove(message.payload[0]);
                     default:
                         break;
                 }
@@ -106,6 +117,9 @@ export default class GameHandler {
                     case BrokerIAServiceMessageType.Grid:
                         // got grid message from ia-services
                         this.handleGridMessage(message.payload);    
+                    case BrokerIAServiceMessageType.RobotHumanInteraction:
+                        // abort game
+                        this.abortGame();
                     default:
                         break;
                 }
@@ -115,22 +129,106 @@ export default class GameHandler {
         }
     }
 
+    private abortGame(): void {
+        this._game.isRunning = false;
+
+        this._tcpConnections.get(NetworkClient.GameClient)?.write(
+            new ServerNetworkMessage(BrokerClientMessageType.EndGame, [254]).getMessage()
+        );
+
+        this._tcpConnections.get(NetworkClient.IAService)?.write(
+            new ServerNetworkMessage(BrokerIAServiceMessageType.EndGame).getMessage()
+        );
+
+        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [254]));
+    }
+
+    private handleClientMove(column: number): void {
+        this._game.move(column, this._game.currentPlayer);
+        this._tcpConnections.get(NetworkClient.IAService)?.write(
+            new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
+        );
+        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.RobotMove, [column]));
+    }
+
+    private sendMoveRequest(): void {
+        const currentPlayer: GamePlayer | undefined = this._game.players.get(this._game.currentPlayer);
+
+        switch (currentPlayer) {
+            case GamePlayer.Human:
+                // ToDo: remove magic number
+                // send move request to robot
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [0]));
+
+                // send a capture grid request
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                );
+                break;
+            case GamePlayer.KI:
+                // ToDo: remove magic number
+                // send move request to robot
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [1]));
+                // send request to client
+                this._tcpConnections.get(NetworkClient.GameClient)?.write(
+                    new ServerNetworkMessage(BrokerClientMessageType.Request).getMessage()
+                );
+                break;
+            default:
+                console.log('Error: gameMove');
+                break;
+        }
+    }
+
     private handleGridMessage(payload: Array<number>): void {
         const grid: Array<Array<number>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
 
         if(this._game.isRunning) {
+            // check if there are changes in the grid
+            const column: number = this._game.getMoveFromGrid(grid);
+            if (column !== -1) {
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
+                );
+                this._game.move(column, this._game.currentPlayer);
+                // send column to robot
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.HumanMove, [column]).getMessage());
+                
+                // send column to client
+                this._tcpConnections.get(NetworkClient.GameClient)?.write(
+                    new ServerNetworkMessage(BrokerClientMessageType.Move, [
+                        column, utils.getKeyFromValue(GamePlayer.Human, this._game.players)
+                    ]).getMessage()
+                );
 
+                this.checkGameState();
+            }
         } else {
             // check if grid is empty
             if ([...grid].flat().some((element) => element !== 0)) {
                 // grid is not empty
+                // send "CleanGrid" message to roboter
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.GridNotEmpty).getMessage());
             } else {
                 // grid is empty
+                // start game
+                // parameter (playernumber, difficulty, height, width, ip, port)
+                
+                const clientArguments: Array<string> = [
+                    '--playernumber ' + utils.getKeyFromValue(GamePlayer.KI, this._game.players),
+                    '--difficulty ' + this._game.difficulty,
+                    '--height ' + this._game.height,
+                    '--width ' + this._game.width,
+                    '--ip ' + this._config.bindingAddress,
+                    '--port ' + this._config.port
+                ];
+
+                this.initClientProcess(clientArguments);
             }
         }
     }
 
-    private startGame(payload: Array<number>): void {
+    private initGame(payload: Array<number>): void {
         const width: number = this._config.boardWidth;
         const height: number = this._config.boardHeight;
         const dispenserCapacity: number = this._config.dispenserCapacity;
