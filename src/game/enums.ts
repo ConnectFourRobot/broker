@@ -15,8 +15,15 @@ enum GamePlayer {
     KI = 1
 }
 
+enum GameEndState {
+    Regular = 0,
+    Draw = 1,
+    Error = 2
+}
+
 export {
     GameSequence,
     GameDifficulty,
-    GamePlayer
+    GamePlayer,
+    GameEndState
 }

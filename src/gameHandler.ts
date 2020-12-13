@@ -4,7 +4,7 @@ import ServerNetworkMessage from './com/serverNetworkMessage'
 import * as utils from './utils'
 import { SerialMessageType } from './com/serial/enums'
 import Game from './game/game'
-import { GameSequence, GameDifficulty, GamePlayer } from './game/enums'
+import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/enums'
 
 import { exec } from 'child_process'
 
@@ -80,13 +80,16 @@ export default class GameHandler {
                     new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
                 );
             case SerialMessageType.Abort:
-                this.abortGame();
+                this.endGame(254);
                 break;
             case SerialMessageType.MoveDone:
                 this._tcpConnections.get(NetworkClient.IAService)?.write(
                     new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
                 );
+                this._game.dispenserCapacity--;
                 this.checkGameState();
+            case SerialMessageType.StonesFull:
+                this._game.dispenserCurrentStorage = this._game.dispenserCapacity;
             default:
                 break;
         }
@@ -119,7 +122,7 @@ export default class GameHandler {
                         this.handleGridMessage(message.payload);    
                     case BrokerIAServiceMessageType.RobotHumanInteraction:
                         // abort game
-                        this.abortGame();
+                        this.endGame(254);
                     default:
                         break;
                 }
@@ -129,18 +132,35 @@ export default class GameHandler {
         }
     }
 
-    private abortGame(): void {
+    private endGame(endState: GameEndState): void {
         this._game.isRunning = false;
 
         this._tcpConnections.get(NetworkClient.GameClient)?.write(
-            new ServerNetworkMessage(BrokerClientMessageType.EndGame, [254]).getMessage()
+            new ServerNetworkMessage(BrokerClientMessageType.EndGame, [this.gameEndStateToClientPayload(endState)]).getMessage()
         );
 
         this._tcpConnections.get(NetworkClient.IAService)?.write(
             new ServerNetworkMessage(BrokerIAServiceMessageType.EndGame).getMessage()
         );
 
-        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [254]));
+        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [this.gameEndStateToRobotPayload(endState)]));
+    }
+
+    private checkGameState(): void {
+        // check if someone has one this game
+        if(this._game.checkForWin(this._game.currentPlayer)) {
+            this.endGame(GameEndState.Regular);
+        } else {
+            if (this._game.getValidMoves(this._game.map).length < 1) {
+                // draw
+                this.endGame(GameEndState.Draw);
+            }
+            // check if stoneCounter is 0
+            if(this._game.dispenserCurrentStorage == 0) {
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.StonesEmpty));
+            }
+            this._game.nextPlayer();
+        }
     }
 
     private handleClientMove(column: number): void {
@@ -246,5 +266,45 @@ export default class GameHandler {
         ];
 
         this.initImageAnalysisProcess(imageAnalysisArguments);
+    }
+
+    private gameEndStateToClientPayload(endState: GameEndState): number {
+        switch (endState) {
+            case GameEndState.Regular:
+                return this._game.currentPlayer;
+                break;
+            case GameEndState.Draw:
+                return 0;
+                break;
+            case GameEndState.Error:
+                return 254;
+                break;
+            default:
+                return 254;
+                break;
+        }
+    }
+
+    private gameEndStateToRobotPayload(endState: GameEndState): number {
+        switch (endState) {
+            case GameEndState.Regular:
+                if (this._game.currentPlayer == utils.getKeyFromValue(GamePlayer.Human, this._game.players)) {
+                    return 0;
+                }
+                if (this._game.currentPlayer == utils.getKeyFromValue(GamePlayer.KI, this._game.players)) {
+                    return 1;
+                }
+                return 254;
+                break;
+            case GameEndState.Draw:
+                return 2;
+                break;
+            case GameEndState.Error:
+                return 254;
+                break;
+            default:
+                return 254;
+                break;
+        }
     }
 }
