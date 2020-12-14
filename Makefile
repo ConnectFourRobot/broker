@@ -1,5 +1,3 @@
-SRC := src/vgr-broker.py
-
 init:
 	npm install
 
