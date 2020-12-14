@@ -32,6 +32,9 @@ export default class GameHandler {
         });
         
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
+
+        // members have to be initialized. Therefor we would need an standard 
+        // Multiple constructors are not supported by JS. That's why we need the dummy constructor here.
         this._game = new Game(1, 1, 1, GameSequence.Human, GameDifficulty.Easy); // dummy constructor
     }
 
