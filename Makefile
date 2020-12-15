@@ -1,13 +1,10 @@
-
-MODULE := broker
-
 init:
-	pip install -r requirements.txt
+	npm install
 
 run:
-	@python -m ${MODULE}
+	npm start
 
 clean:
-	rm -rf .pytest_cache .coverage .pytest_cache coverage.xml
+	rm -rf node_modules
 
 .PHONY: init run clean
