@@ -42,7 +42,11 @@ export default class GameHandler {
         this._server.listen(this._config.port, this._config.bindingAddress, () => {
             console.log('VGR-Broker is running...');
             // tell the arduino that we are ready
-            this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
+            (async () => {
+                const msToWait: number = 5000;
+                await utils.delay(msToWait);
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
+            })();
         });
         
         this._server.on('connection', client => {
@@ -238,12 +242,12 @@ export default class GameHandler {
                 // parameter (playernumber, difficulty, height, width, ip, port)
                 
                 const clientArguments: Array<string> = [
-                    '--playernumber ' + utils.getKeyFromValue(GamePlayer.KI, this._game.players),
-                    '--difficulty ' + this._game.difficulty,
-                    '--height ' + this._game.height,
-                    '--width ' + this._game.width,
-                    '--ip ' + this._config.bindingAddress,
-                    '--port ' + this._config.port
+                    '-w ' + utils.getKeyFromValue(GamePlayer.KI, this._game.players),
+                    '-l ' + this._game.difficulty,
+                    '-r ' + this._game.height,
+                    '-c ' + this._game.width,
+                    '-i ' + this._config.bindingAddress,
+                    '-p ' + this._config.port
                 ];
 
                 this.initClientProcess(clientArguments);
