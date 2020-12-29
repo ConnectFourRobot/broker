@@ -13,3 +13,7 @@ export function getMatrixFromArray<T>(array: Array<T> | any, width: number): Arr
     return array.reduce((rows, key, index) => (index % width == 0 ? rows.push([key]) 
       : rows[rows.length-1].push(key)) && rows, []);
 }
+
+export function delay(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

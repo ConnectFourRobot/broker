@@ -42,7 +42,11 @@ export default class GameHandler {
         this._server.listen(this._config.port, this._config.bindingAddress, () => {
             console.log('VGR-Broker is running...');
             // tell the arduino that we are ready
-            this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
+            (async () => {
+                const msToWait: number = 5000;
+                await utils.delay(msToWait);
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
+            })();
         });
         
         this._server.on('connection', client => {
