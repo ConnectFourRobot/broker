@@ -242,12 +242,12 @@ export default class GameHandler {
                 // parameter (playernumber, difficulty, height, width, ip, port)
                 
                 const clientArguments: Array<string> = [
-                    '-w ' + utils.getKeyFromValue(GamePlayer.KI, this._game.players),
-                    '-l ' + this._game.difficulty,
-                    '-r ' + this._game.height,
-                    '-c ' + this._game.width,
-                    '-i ' + this._config.bindingAddress,
-                    '-p ' + this._config.port
+                    '--playernumber ' + utils.getKeyFromValue(GamePlayer.KI, this._game.players),
+                    '--difficulty ' + this._game.difficulty,
+                    '--height ' + this._game.height,
+                    '--width ' + this._game.width,
+                    '--ip ' + this._config.bindingAddress,
+                    '--port ' + this._config.port
                 ];
 
                 this.initClientProcess(clientArguments);
