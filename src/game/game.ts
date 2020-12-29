@@ -85,33 +85,33 @@ export default class Game {
     }
 
     public checkForWin(player: number): boolean {
-        // horizontalCheck 
-        for (let j = 0; j<this.height-3 ; j++ ){
-            for (let i = 0; i<this.width; i++){
-                if (this.map[j][i] == player && this.map[j+1][i] == player && this.map[j+2][i] == player && this.map[j+3][i] == player){
+        // verticalCheck 
+        for (let y = 0; y<this.height-3; y++){
+            for (let x = 0; x<this.width; x++){
+                if (this.map[y][x] == player && this.map[y+1][x] == player && this.map[y+2][x] == player && this.map[y+3][x] == player){
                     return true;
                 }           
             }
         }
-        // verticalCheck
-        for (let i = 0; i<this.width-3 ; i++ ){
-            for (let j = 0; j<this.height; j++){
-                if (this.map[j][i] == player && this.map[j][i+1] == player && this.map[j][i+2] == player && this.map[j][i+3] == player){
+        // horizontalCheck
+        for (let x = 0; x<this.width-3 ; x++){
+            for (let y = 0; y<this.height; y++){
+                if (this.map[y][x] == player && this.map[y][x+1] == player && this.map[y][x+2] == player && this.map[y][x+3] == player){
                     return true;
                 }           
-            }
-        }
-        // ascendingDiagonalCheck 
-        for (let i=3; i<this.width; i++){
-            for (let j=0; j<this.height-3; j++){
-                if (this.map[j][i] == player && this.map[j+1][i-1] == player && this.map[j+2][i-2] == player && this.map[j+3][i-3] == player)
-                    return true;
             }
         }
         // descendingDiagonalCheck
-        for (let i=3; i<this.width; i++){
-            for (let j=3; j<this.height; j++){
-                if (this.map[j][i] == player && this.map[j-1][i-1] == player && this.map[j-2][i-2] == player && this.map[j-3][i-3] == player)
+        for (let x=3; x<this.width; x++){
+            for (let y=0; y<this.height-3; y++){
+                if (this.map[y][x] == player && this.map[y+1][x-1] == player && this.map[y+2][x-2] == player && this.map[y+3][x-3] == player)
+                    return true;
+            }
+        }
+        // ascendingDiagonalCheck
+        for (let x=3; x<this.width; x++){
+            for (let y=3; y<this.height; y++){
+                if (this.map[y][x] == player && this.map[y-1][x-1] == player && this.map[y-2][x-2] == player && this.map[y-3][x-3] == player)
                     return true;
             }
         }
