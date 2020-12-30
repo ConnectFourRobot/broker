@@ -15,5 +15,5 @@ npm run transpile
 echo "Now he will register your app as a system service."
 pm2 start dist/app.js
 
-echo "Start service on startup"
+echo "Start service on startup."
 pm2 startup systemd
