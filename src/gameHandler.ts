@@ -5,6 +5,7 @@ import * as utils from './utils'
 import { SerialMessageType } from './com/serial/enums'
 import Game from './game/game'
 import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/enums'
+import SerialConnector from './com/serial/connector'
 
 import { exec } from 'child_process'
 
@@ -28,8 +29,10 @@ export default class GameHandler {
         this._server = net.createServer();
         this._serialPort = new SerialPort(this._config.serialPort, {
             baudRate: this._config.baudRate,
-            autoOpen: true
+            autoOpen: false
         });
+        const serialConnector: SerialConnector = new SerialConnector(this._serialPort);
+        serialConnector.openPort();
         
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
 
