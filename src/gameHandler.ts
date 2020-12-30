@@ -57,12 +57,28 @@ export default class GameHandler {
                 // check if it is a registration message
                 if (message.type == 0) {
                     console.log('Registration Type');
+                    console.log(this._tcpConnections.size);
+                    const key: number = message.payload[0];
+                    // delete old connection (there should not be one, but just in case)
+                    if (this._tcpConnections.has(key)) {
+                        console.log('Error: A service has connected twice.');
+                        this._tcpConnections.get(key)?.destroy();
+                        this._tcpConnections.delete(key);
+                    }
                     this._tcpConnections.set(message.payload[0], client);
                 }
                 
                 this.handleIncomingTcpData(message, utils.getKeyFromValue(client, this._tcpConnections));
             });
+            client.on('end', () => {
+                console.log('Someone has disconnected');
+                const key: number = utils.getKeyFromValue(client, this._tcpConnections);
+                if (key != 0) {
+                    this._tcpConnections.delete(key);
+                }
+            });
         });
+
         this._serialPort.on('data', data => {
             this.handleIncomingSerialData(new ClientNetworkMessage(data));
         });
@@ -151,6 +167,8 @@ export default class GameHandler {
         );
 
         this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [this.gameEndStateToRobotPayload(endState)]));
+
+        this._tcpConnections.clear();
     }
 
     private checkGameState(): void {
