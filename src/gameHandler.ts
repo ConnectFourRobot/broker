@@ -6,6 +6,7 @@ import { SerialMessageType } from './com/serial/enums'
 import Game from './game/game'
 import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/enums'
 import SerialConnector from './com/serial/connector'
+import VgrParser from './com/serial/vgrParser'
 
 import { exec } from 'child_process'
 
@@ -21,6 +22,8 @@ export default class GameHandler {
     private _serialPort: any;
     private _game: Game;
 
+    private readonly _vgrParser: VgrParser;
+
     private _imageAnalysisProcess: any;
     private _clientProcess: any;
 
@@ -31,6 +34,8 @@ export default class GameHandler {
             baudRate: this._config.baudRate,
             autoOpen: false
         });
+        this._vgrParser = new VgrParser();
+        this._serialPort.pipe(this._vgrParser);
         const serialConnector: SerialConnector = new SerialConnector(this._serialPort);
         serialConnector.openPort();
         
@@ -82,7 +87,7 @@ export default class GameHandler {
             });
         });
 
-        this._serialPort.on('data', data => {
+        this._vgrParser.on('data', data => {
             this.handleIncomingSerialData(new ClientNetworkMessage(data));
         });
     }
