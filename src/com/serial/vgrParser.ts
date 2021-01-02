@@ -1,4 +1,3 @@
-import { type } from 'os';
 import { Transform } from 'stream'
 
 export default class VgrParser extends Transform {
