@@ -97,7 +97,7 @@ export default class GameHandler {
     }
 
     private initClientProcess(args: Array<string>): void {
-        this._clientProcess = exec(this._config.clientPath + args.join(' '));
+        this._clientProcess = exec(this._config.clientPath + ' ' + args.join(' '));
     }
 
     private handleIncomingSerialData(message: ClientNetworkMessage) {
