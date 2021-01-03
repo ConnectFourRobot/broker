@@ -14,6 +14,10 @@ export function getMatrixFromArray<T>(array: Array<T> | any, width: number): Arr
       : rows[rows.length-1].push(key)) && rows, []);
 }
 
+export function getArrayFrom2DMatrix<T>(matrix: Array<Array<T>>): Array<T> {
+    return matrix.reduce((prev, curr) => prev.concat(curr));
+}
+
 export function delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }

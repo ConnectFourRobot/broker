@@ -73,7 +73,7 @@ export default class GameHandler {
                         this._tcpConnections.get(key)?.destroy();
                         this._tcpConnections.delete(key);
                     }
-                    this._tcpConnections.set(message.payload[0], client);
+                    this._tcpConnections.set(key, client);
                 }
                 
                 this.handleIncomingTcpData(message, utils.getKeyFromValue(client, this._tcpConnections));
@@ -151,6 +151,7 @@ export default class GameHandler {
                     case BrokerIAServiceMessageType.Grid:
                         // got grid message from ia-services
                         this.handleGridMessage(message.payload);    
+                        break;
                     case BrokerIAServiceMessageType.RobotHumanInteraction:
                         // abort game
                         this.endGame(254);
@@ -174,7 +175,7 @@ export default class GameHandler {
             new ServerNetworkMessage(BrokerIAServiceMessageType.EndGame).getMessage()
         );
 
-        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [this.gameEndStateToRobotPayload(endState)]));
+        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.EndGame, [this.gameEndStateToRobotPayload(endState)]).getMessage());
 
         this._tcpConnections.clear();
     }
@@ -201,7 +202,7 @@ export default class GameHandler {
         this._tcpConnections.get(NetworkClient.IAService)?.write(
             new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
         );
-        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.RobotMove, [column]));
+        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.RobotMove, [column]).getMessage());
     }
 
     private sendMoveRequest(): void {
@@ -211,7 +212,7 @@ export default class GameHandler {
             case GamePlayer.Human:
                 // ToDo: remove magic number
                 // send move request to robot
-                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [0]));
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [0]).getMessage());
 
                 // send a capture grid request
                 this._tcpConnections.get(NetworkClient.IAService)?.write(
@@ -221,7 +222,7 @@ export default class GameHandler {
             case GamePlayer.KI:
                 // ToDo: remove magic number
                 // send move request to robot
-                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [1]));
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [1]).getMessage());
                 // send request to client
                 this._tcpConnections.get(NetworkClient.GameClient)?.write(
                     new ServerNetworkMessage(BrokerClientMessageType.Request).getMessage()
@@ -258,7 +259,7 @@ export default class GameHandler {
             }
         } else {
             // check if grid is empty
-            if ([...grid].flat().some((element) => element !== 0)) {
+            if (utils.getArrayFrom2DMatrix(grid).some((element) => element !== 0)) {
                 // grid is not empty
                 // send "CleanGrid" message to roboter
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.GridNotEmpty).getMessage());
