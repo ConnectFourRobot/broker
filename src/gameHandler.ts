@@ -93,7 +93,7 @@ export default class GameHandler {
     }
 
     private initImageAnalysisProcess(args: Array<string>): void {
-        this._imageAnalysisProcess = exec(this._config.imageAnalysisPath + args.join(' '));
+        this._imageAnalysisProcess = exec(this._config.imageAnalysisPath + ' ' + args.join(' '));
     }
 
     private initClientProcess(args: Array<string>): void {
