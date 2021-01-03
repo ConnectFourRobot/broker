@@ -82,7 +82,9 @@ export default class GameHandler {
                 console.log('Someone has disconnected');
                 const key: number = utils.getKeyFromValue(client, this._tcpConnections);
                 if (key != 0) {
+                    // this means a service has crashed
                     this._tcpConnections.delete(key);
+                    this.endGame(GameEndState.Error);
                 }
             });
         });
