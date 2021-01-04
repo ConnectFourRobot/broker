@@ -2,6 +2,9 @@ import { GameSequence, GameDifficulty, GamePlayer } from './enums'
 
 export default class Game {
 
+    private _amountOfMovesMade: number = 0;
+    private _isRunning: boolean = false;
+
     public map: Array<Array<number>>;
     public width: number;
     public height: number;
@@ -13,8 +16,6 @@ export default class Game {
 
     public dispenserCapacity: number;
     public dispenserCurrentStorage: number;
-
-    public isRunning: boolean = false;
 
     constructor(width: number, height: number, dispenserCapacity: number, sequence: GameSequence, difficulty: GameDifficulty) {
         this.map = new Array(height).fill(0).map(() => new Array(width).fill(0));
@@ -48,6 +49,23 @@ export default class Game {
         this.currentPlayer = (this.currentPlayer % 2) + 1;
     }
 
+    get amountOfMovesMade(): number {
+        return this._amountOfMovesMade;
+    }
+
+    get isRunning(): boolean {
+        return this._isRunning;
+    }
+
+    set isRunning(value: boolean) {
+        if (value) {
+            // start a game
+            this._isRunning = true;
+            this._amountOfMovesMade = 0;
+        }
+        this._isRunning = value;
+    }
+
     public getValidMoves(map: Array<Array<number>>): Array<number> {
         const moves: Array<number> = [];
         map[0].forEach((cell, index) => {
@@ -66,6 +84,7 @@ export default class Game {
         for (let i = (this.height - 1); i >= 0; i--){
             if (this.map[i][x] === 0) {
                 this.map[i][x] = playerNumber;
+                this._amountOfMovesMade++;
                 break;
             }
         }
