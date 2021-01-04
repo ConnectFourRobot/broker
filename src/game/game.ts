@@ -81,10 +81,10 @@ export default class Game {
     }
 
     public move(x: number, playerNumber: number) {
-        this._amountOfMovesMade++;
         for (let i = (this.height - 1); i >= 0; i--){
             if (this.map[i][x] === 0) {
                 this.map[i][x] = playerNumber;
+                this._amountOfMovesMade++;
                 break;
             }
         }
