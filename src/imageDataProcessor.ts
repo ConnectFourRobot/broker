@@ -15,7 +15,10 @@ class ImageDataProcessor {
         this._players = players;
     }
 
-    public initColorMapping(grid: Array<Array<ColorCode>>, currentPlayer: GamePlayer) {
+    public initColorMapping(grid: Array<Array<ColorCode>>, currentPlayer: GamePlayer | undefined): void {
+        if (currentPlayer === undefined) {
+            return;
+        }
         const flatGrid: Array<number> = utils.getArrayFrom2DMatrix(grid);
         // check if there is only one stone
         const numberOfStones: number = flatGrid.reduce((acc, curr) => curr !== ColorCode.Empty ? acc++ : acc, 0);

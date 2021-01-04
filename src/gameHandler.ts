@@ -240,10 +240,14 @@ export default class GameHandler {
     }
 
     private handleGridMessage(payload: Array<number>): void {
-        const grid: Array<Array<ColorCode>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
+        const colorGrid: Array<Array<ColorCode>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
         // ToDo: Error detection
-        const gameGrid: Array<Array<number>> = this._imageDataProcessor.colorToGameGrid(grid);
+        const gameGrid: Array<Array<number>> = this._imageDataProcessor.colorToGameGrid(colorGrid);
         if(this._game.isRunning) {
+            // check if this is the first move
+            if (this._game.amountOfMovesMade == 0) {
+                this._imageDataProcessor.initColorMapping(colorGrid, this._game.players.get(this._game.currentPlayer));
+            }
             // check if there are changes in the grid
             const column: number = this._game.getMoveFromGrid(gameGrid);
             if (column !== -1) {
@@ -265,7 +269,7 @@ export default class GameHandler {
             }
         } else {
             // check if grid is empty
-            if (utils.getArrayFrom2DMatrix(grid).some((element) => element !== 0)) {
+            if (utils.getArrayFrom2DMatrix(colorGrid).some((element) => element !== 0)) {
                 // grid is not empty
                 // send "CleanGrid" message to roboter
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.GridNotEmpty).getMessage());
