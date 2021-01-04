@@ -7,6 +7,7 @@ import Game from './game/game'
 import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/enums'
 import SerialConnector from './com/serial/connector'
 import VgrParser from './com/serial/vgrParser'
+import ImageDataProcessor, { ColorCode } from './imageDataProcessor'
 
 import { exec } from 'child_process'
 
@@ -21,6 +22,7 @@ export default class GameHandler {
     private _server: net.Server;
     private _serialPort: any;
     private _game: Game;
+    private _imageDataProcessor: ImageDataProcessor
 
     private readonly _vgrParser: VgrParser;
 
@@ -42,8 +44,9 @@ export default class GameHandler {
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
 
         // members have to be initialized. Therefor we would need an standard 
-        // Multiple constructors are not supported by JS. That's why we need the dummy constructor here.
+        // Multiple constructors are not supported by JS. That's why we need the dummy constructors here.
         this._game = new Game(1, 1, 1, GameSequence.Human, GameDifficulty.Easy); // dummy constructor
+        this._imageDataProcessor = new ImageDataProcessor(new Map<number, GamePlayer>()); // dummy constructor
     }
 
     public run(): void {
@@ -237,11 +240,12 @@ export default class GameHandler {
     }
 
     private handleGridMessage(payload: Array<number>): void {
-        const grid: Array<Array<number>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
-
+        const grid: Array<Array<ColorCode>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
+        // ToDo: Error detection
+        const gameGrid: Array<Array<number>> = this._imageDataProcessor.colorToGameGrid(grid);
         if(this._game.isRunning) {
             // check if there are changes in the grid
-            const column: number = this._game.getMoveFromGrid(grid);
+            const column: number = this._game.getMoveFromGrid(gameGrid);
             if (column !== -1) {
                 this._tcpConnections.get(NetworkClient.IAService)?.write(
                     new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
@@ -293,6 +297,7 @@ export default class GameHandler {
         const difficulty: GameDifficulty = payload[1];
 
         this._game = new Game(width, height, dispenserCapacity, sequence, difficulty);
+        this._imageDataProcessor = new ImageDataProcessor(this._game.players);
 
         const imageAnalysisArguments: Array<string> = [
             '--height ' + this._config.boardHeight, 
