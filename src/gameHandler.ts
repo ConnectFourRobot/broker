@@ -46,7 +46,7 @@ export default class GameHandler {
         // members have to be initialized. Therefor we would need an standard 
         // Multiple constructors are not supported by JS. That's why we need the dummy constructors here.
         this._game = new Game(1, 1, 1, GameSequence.Human, GameDifficulty.Easy); // dummy constructor
-        this._imageDataProcessor = new ImageDataProcessor(new Map<number, GamePlayer>()); // dummy constructor
+        this._imageDataProcessor = new ImageDataProcessor(new Map<number, GamePlayer>(), 0, 0); // dummy constructor
     }
 
     public run(): void {
@@ -240,14 +240,17 @@ export default class GameHandler {
     }
 
     private handleGridMessage(payload: Array<number>): void {
-        const colorGrid: Array<Array<ColorCode>> = utils.getMatrixFromArray(payload, this._config.boardWidth);
-        // ToDo: Error detection
-        const gameGrid: Array<Array<number>> = this._imageDataProcessor.colorToGameGrid(colorGrid);
+        const colorGrid: Array<ColorCode> = payload;
         if(this._game.isRunning) {
-            // check if this is the first move
-            if (this._game.amountOfMovesMade == 0) {
-                this._imageDataProcessor.initColorMapping(colorGrid, this._game.players.get(this._game.currentPlayer));
+            // Error detection
+            if (!this._imageDataProcessor.isColorGridValid(colorGrid, this._game.players.get(this._game.currentPlayer))) {
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                );
+                return;
             }
+
+            const gameGrid: Array<Array<number>> = this._imageDataProcessor.colorToGameGrid(colorGrid);
             // check if there are changes in the grid
             const column: number = this._game.getMoveFromGrid(gameGrid);
             if (column !== -1) {
@@ -269,7 +272,7 @@ export default class GameHandler {
             }
         } else {
             // check if grid is empty
-            if (utils.getArrayFrom2DMatrix(colorGrid).some((element) => element !== 0)) {
+            if (colorGrid.some((stone: ColorCode) => stone !== ColorCode.Empty)) {
                 // grid is not empty
                 // send "CleanGrid" message to roboter
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.GridNotEmpty).getMessage());
@@ -301,7 +304,7 @@ export default class GameHandler {
         const difficulty: GameDifficulty = payload[1];
 
         this._game = new Game(width, height, dispenserCapacity, sequence, difficulty);
-        this._imageDataProcessor = new ImageDataProcessor(this._game.players);
+        this._imageDataProcessor = new ImageDataProcessor(this._game.players, height, width);
 
         const imageAnalysisArguments: Array<string> = [
             '--height ' + this._config.boardHeight, 
