@@ -8,9 +8,9 @@ import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/e
 import SerialConnector from './com/serial/connector'
 import VgrParser from './com/serial/vgrParser'
 import ImageDataProcessor, { ColorCode } from './imageDataProcessor'
+import SoundGenerator, { SoundScene } from './soundGenerator'
 
 import { exec } from 'child_process'
-
 import net from 'net'
 import configIni from 'config.ini'
 import SerialPort from 'serialport'
@@ -23,6 +23,7 @@ export default class GameHandler {
     private _serialPort: any;
     private _game: Game;
     private _imageDataProcessor: ImageDataProcessor
+    private _soundGenerator: SoundGenerator
 
     private readonly _vgrParser: VgrParser;
 
@@ -42,6 +43,8 @@ export default class GameHandler {
         serialConnector.openPort();
         
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
+
+        this._soundGenerator = new SoundGenerator('./assets/');
 
         // members have to be initialized. Therefor we would need an standard 
         // Multiple constructors are not supported by JS. That's why we need the dummy constructors here.
@@ -67,8 +70,6 @@ export default class GameHandler {
                 const message = new ClientNetworkMessage(data);
                 // check if it is a registration message
                 if (message.type == 0) {
-                    console.log('Registration Type');
-                    console.log(this._tcpConnections.size);
                     const key: number = message.payload[0];
                     // delete old connection (there should not be one, but just in case)
                     if (this._tcpConnections.has(key)) {
@@ -305,6 +306,9 @@ export default class GameHandler {
 
         this._game = new Game(width, height, dispenserCapacity, sequence, difficulty);
         this._imageDataProcessor = new ImageDataProcessor(this._game.players, height, width);
+
+        this._soundGenerator.playSound(SoundScene.StartGame);
+        console.log('Sound played');
 
         const imageAnalysisArguments: Array<string> = [
             '--height ' + this._config.boardHeight, 
