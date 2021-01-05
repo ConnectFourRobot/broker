@@ -1,4 +1,3 @@
-import { type } from 'os';
 import { GamePlayer } from './game/enums'
 import * as utils from './utils'
 
