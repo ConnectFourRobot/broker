@@ -173,6 +173,8 @@ export default class GameHandler {
     private endGame(endState: GameEndState): void {
         this._game.isRunning = false;
 
+        this.playSoundEndState(endState);
+
         this._tcpConnections.get(NetworkClient.GameClient)?.write(
             new ServerNetworkMessage(BrokerClientMessageType.EndGame, [this.gameEndStateToClientPayload(endState)]).getMessage()
         );
@@ -200,6 +202,28 @@ export default class GameHandler {
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.StonesEmpty));
             }
             this._game.nextPlayer();
+        }
+    }
+
+    private playSoundEndState(endState: GameEndState): void {
+        switch (endState) {
+            case GameEndState.Regular:
+                switch (this._game.players.get(this._game.currentPlayer)) {
+                    case GamePlayer.Human:
+                        this._soundGenerator.playSound(SoundScene.RobotLostGame);
+                        break;
+                
+                    case GamePlayer.KI:
+                        this._soundGenerator.playSound(SoundScene.RobotWonGame);
+                        break;
+                }
+                break;
+            case GameEndState.Draw:
+                this._soundGenerator.playSound(SoundScene.Draw);
+                break;
+            case GameEndState.Error:
+                this._soundGenerator.playSound(SoundScene.Error);
+                break;
         }
     }
 
@@ -308,7 +332,6 @@ export default class GameHandler {
         this._imageDataProcessor = new ImageDataProcessor(this._game.players, height, width);
 
         this._soundGenerator.playSound(SoundScene.StartGame);
-        console.log('Sound played');
 
         const imageAnalysisArguments: Array<string> = [
             '--height ' + this._config.boardHeight, 

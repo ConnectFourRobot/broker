@@ -2,7 +2,11 @@ import fs from 'fs';
 import AudioPlayer from 'play-sound'
 
 enum SoundScene {
-    StartGame = 'startGame'
+    StartGame = 'startGame',
+    RobotLostGame = 'robotLostGame',
+    RobotWonGame = 'robotWonGame',
+    Draw = 'draw',
+    Error = 'error'
 };
 
 class SoundGenerator {
