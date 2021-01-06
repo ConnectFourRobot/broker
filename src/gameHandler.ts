@@ -279,9 +279,6 @@ export default class GameHandler {
             // check if there are changes in the grid
             const column: number = this._game.getMoveFromGrid(gameGrid);
             if (column !== -1) {
-                this._tcpConnections.get(NetworkClient.IAService)?.write(
-                    new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
-                );
                 this._game.move(column, this._game.currentPlayer);
                 // send column to robot
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.HumanMove, [column]).getMessage());
