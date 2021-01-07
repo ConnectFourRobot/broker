@@ -57,7 +57,7 @@ export default class GameHandler {
             console.log('VGR-Broker is running...');
             // tell the arduino that we are ready
             (async () => {
-                const msToWait: number = 5000;
+                const msToWait: number = 3000;
                 await utils.delay(msToWait);
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
             })();
@@ -99,10 +99,12 @@ export default class GameHandler {
     }
 
     private initImageAnalysisProcess(args: Array<string>): void {
+        console.log('Init IA-Service');
         this._imageAnalysisProcess = exec(this._config.imageAnalysisPath + ' ' + args.join(' '));
     }
 
     private initClientProcess(args: Array<string>): void {
+        console.log('Init Client');
         this._clientProcess = exec(this._config.clientPath + ' ' + args.join(' '));
     }
 
@@ -133,6 +135,8 @@ export default class GameHandler {
     }
     
     private handleIncomingTcpData(message: ClientNetworkMessage, client: NetworkClient) {
+        console.log('Incoming tcp data');
+        console.log(message);
         switch (client) {
             case NetworkClient.GameClient:
                 switch (message.type) {
@@ -232,6 +236,8 @@ export default class GameHandler {
         this._tcpConnections.get(NetworkClient.IAService)?.write(
             new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
         );
+        console.log("Send move to robot");
+        console.log("Move send to robot: " + column);
         this._serialPort.write(new ServerNetworkMessage(SerialMessageType.RobotMove, [column]).getMessage());
     }
 
@@ -250,9 +256,13 @@ export default class GameHandler {
                 );
                 break;
             case GamePlayer.KI:
+                console.log("send move request to client");
                 // ToDo: remove magic number
                 // send move request to robot
-                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [1]).getMessage());
+                const message: Buffer = new ServerNetworkMessage(SerialMessageType.Request, [1]).getMessage();
+                console.log(message);
+                this._serialPort.write(message);
+                this._serialPort.drain();
                 // send request to client
                 this._tcpConnections.get(NetworkClient.GameClient)?.write(
                     new ServerNetworkMessage(BrokerClientMessageType.Request).getMessage()
@@ -266,6 +276,7 @@ export default class GameHandler {
 
     private handleGridMessage(payload: Array<number>): void {
         const colorGrid: Array<ColorCode> = payload;
+        console.log(colorGrid);
         if(this._game.isRunning) {
             // Error detection
             if (!this._imageDataProcessor.isColorGridValid(colorGrid, this._game.players.get(this._game.currentPlayer))) {

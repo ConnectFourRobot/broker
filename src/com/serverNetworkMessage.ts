@@ -11,13 +11,13 @@ export default class ServerNetworkMessage {
 
     public getMessage(): Buffer{
         const headerSize: number = 2;
-        const header = new Uint8Array(2);
+        const header = new Uint8Array(headerSize);
         header[0] = this.type;
         header[1] = this.size;
 
         const networkMessage = new Uint8Array(headerSize + this.size);
         networkMessage.set(header);
-        networkMessage.set(this.payload);
+        networkMessage.set(this.payload, headerSize);
 
         return Buffer.from(networkMessage);
     }
