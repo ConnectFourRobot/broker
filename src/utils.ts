@@ -1,5 +1,5 @@
 export function getKeyFromValue(value: any, map: Map<number, any>): number {
-    let found = [...map]?.find(([key, val]) => val === value);
+    let found = [...map]?.find(([key, val]) => val == value);
 
     if(found !== undefined) {
         return found[0];

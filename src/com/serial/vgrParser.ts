@@ -27,13 +27,25 @@ export default class VgrParser extends Transform {
             this._payload = Buffer.alloc(this._size);
             cursor++;
         }
+        if (this._type != undefined && this._size !== undefined && this._size === 0) {
+            const header: Uint8Array = new Uint8Array(this._headerSize);
+            header[0] = this._type;
+            header[1] = this._size;
+            this._buffer = Buffer.from(header);
+
+            this.push(this._buffer);
+            this._buffer = Buffer.alloc(0);
+            this._position = 0;
+            this._type = null;
+            this._size = null;
+            this._payload = null;
+        }
         if (this._type != undefined && this._size != undefined && cursor < chunk.length) {
             while (cursor < chunk.length) {
                 this._payload[this._position] = chunk[cursor];
                 cursor++;
                 this._position++;
                 if (this._position === this._size) {
-                    console.log(this._size);
                     const header: Uint8Array = new Uint8Array(this._headerSize);
                     header[0] = this._type;
                     header[1] = this._size;

@@ -18,7 +18,11 @@ enum BrokerIAServiceMessageType {
     StopCapture = 3,
     CaptureRobotHuman = 4,
     RobotHumanInteraction = 5,
-    EndGame = 6
+    EndGame = 6,
+    NoCameraFound = 253,
+    NoGridFound = 254,
+    NoInteractionDetected = 127,
+    CaptureInteractionHeartbeat = 128
 }
 
 export {NetworkClient, BrokerClientMessageType, BrokerIAServiceMessageType}

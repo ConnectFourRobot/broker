@@ -6,7 +6,13 @@ enum SoundScene {
     RobotLostGame = 'robotLostGame',
     RobotWonGame = 'robotWonGame',
     Draw = 'draw',
-    Error = 'error'
+    Error = 'error',
+    DispenserEmpty = 'dispenserEmpty',
+    FirstHumanMove = 'firstHumanMove',
+    FirstRobotMove = 'firstRobotMove',
+    FullGrid = 'fullGrid',
+    HumanInteraction = 'humanInteraction',
+    NoCamera = 'noCamera'
 };
 
 class SoundGenerator {

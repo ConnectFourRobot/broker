@@ -62,8 +62,10 @@ export default class Game {
             // start a game
             this._isRunning = true;
             this._amountOfMovesMade = 0;
+        } else {
+            this._isRunning = false;
+            this._amountOfMovesMade = 0;
         }
-        this._isRunning = value;
     }
 
     public getValidMoves(map: Array<Array<number>>): Array<number> {
@@ -76,8 +78,8 @@ export default class Game {
         return moves;
     }
 
-    public isMoveValid(x: number, map: Array<Array<number>>): number | undefined {
-        return this.getValidMoves(map).find(element => element === x);
+    public isMoveValid(x: number, map: Array<Array<number>>): boolean {
+        return this.getValidMoves(map).some(element => element === x);
     }
 
     public move(x: number, playerNumber: number) {
@@ -94,9 +96,7 @@ export default class Game {
         for (let y = 0; y < this.height; y++) {
             for (let x = 0; x < this.width; x++) {
                 if (this.map[y][x] !== map[y][x]) {
-                    if (this.isMoveValid(x, this.map)) {
-                        return x;
-                    }
+                    return x;
                 }
             }
         }
