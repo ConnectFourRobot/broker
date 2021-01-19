@@ -8,9 +8,9 @@ import { GameSequence, GameDifficulty, GamePlayer, GameEndState } from './game/e
 import SerialConnector from './com/serial/connector'
 import VgrParser from './com/serial/vgrParser'
 import ImageDataProcessor, { ColorCode } from './imageDataProcessor'
+import SoundGenerator, { SoundScene } from './soundGenerator'
 
 import { exec } from 'child_process'
-
 import net from 'net'
 import configIni from 'config.ini'
 import SerialPort from 'serialport'
@@ -23,6 +23,8 @@ export default class GameHandler {
     private _serialPort: any;
     private _game: Game;
     private _imageDataProcessor: ImageDataProcessor
+    private _soundGenerator: SoundGenerator
+    private _captureInteraction: boolean
 
     private readonly _vgrParser: VgrParser;
 
@@ -32,6 +34,7 @@ export default class GameHandler {
     constructor(config: string) {
         this._config = configIni.load(config).Default;
         this._server = net.createServer();
+        this._captureInteraction = false;
         this._serialPort = new SerialPort(this._config.serialPort, {
             baudRate: this._config.baudRate,
             autoOpen: false
@@ -42,6 +45,8 @@ export default class GameHandler {
         serialConnector.openPort();
         
         this._tcpConnections = new Map<NetworkClient, net.Socket>();
+
+        this._soundGenerator = new SoundGenerator('./assets/');
 
         // members have to be initialized. Therefor we would need an standard 
         // Multiple constructors are not supported by JS. That's why we need the dummy constructors here.
@@ -54,7 +59,7 @@ export default class GameHandler {
             console.log('VGR-Broker is running...');
             // tell the arduino that we are ready
             (async () => {
-                const msToWait: number = 5000;
+                const msToWait: number = 4000;
                 await utils.delay(msToWait);
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Ready).getMessage());
             })();
@@ -67,8 +72,6 @@ export default class GameHandler {
                 const message = new ClientNetworkMessage(data);
                 // check if it is a registration message
                 if (message.type == 0) {
-                    console.log('Registration Type');
-                    console.log(this._tcpConnections.size);
                     const key: number = message.payload[0];
                     // delete old connection (there should not be one, but just in case)
                     if (this._tcpConnections.has(key)) {
@@ -78,7 +81,6 @@ export default class GameHandler {
                     }
                     this._tcpConnections.set(key, client);
                 }
-                
                 this.handleIncomingTcpData(message, utils.getKeyFromValue(client, this._tcpConnections));
             });
             client.on('end', () => {
@@ -93,11 +95,14 @@ export default class GameHandler {
         });
 
         this._vgrParser.on('data', data => {
+            console.log("Raw serial data");
+            console.log(data);
             this.handleIncomingSerialData(new ClientNetworkMessage(data));
         });
     }
 
     private initImageAnalysisProcess(args: Array<string>): void {
+        console.log('Init IA-Service');
         this._imageAnalysisProcess = exec(this._config.imageAnalysisPath + ' ' + args.join(' '));
     }
 
@@ -115,23 +120,36 @@ export default class GameHandler {
                 this._tcpConnections.get(NetworkClient.IAService)?.write(
                     new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
                 );
+                break;
             case SerialMessageType.Abort:
-                this.endGame(254);
+                this.endGame(GameEndState.Error);
                 break;
             case SerialMessageType.MoveDone:
+                this._captureInteraction = false;
                 this._tcpConnections.get(NetworkClient.IAService)?.write(
                     new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
                 );
-                this._game.dispenserCapacity--;
-                this.checkGameState();
+                this._game.dispenserCurrentStorage--;
+                if(this.checkGameState()) {
+                    this.sendMoveRequest();
+                }
+                break;
             case SerialMessageType.StonesFull:
                 this._game.dispenserCurrentStorage = this._game.dispenserCapacity;
+                break;
+            case SerialMessageType.AlingCameraDone:
+                this._tcpConnections.get(NetworkClient.IAService)?.write(
+                    new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                );
+                break;
             default:
                 break;
         }
     }
     
     private handleIncomingTcpData(message: ClientNetworkMessage, client: NetworkClient) {
+        console.log('Incoming tcp data');
+        console.log(message);
         switch (client) {
             case NetworkClient.GameClient:
                 switch (message.type) {
@@ -141,6 +159,7 @@ export default class GameHandler {
                         break;
                     case BrokerClientMessageType.Answer:
                         this.handleClientMove(message.payload[0]);
+                        break;
                     default:
                         break;
                 }
@@ -157,9 +176,30 @@ export default class GameHandler {
                         // got grid message from ia-services
                         this.handleGridMessage(message.payload);    
                         break;
+                    case BrokerIAServiceMessageType.NoInteractionDetected:
+                        if (this._captureInteraction) {
+                            this._tcpConnections.get(NetworkClient.IAService)?.write(
+                                new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureInteractionHeartbeat).getMessage()
+                            );
+                        }
+                        break;
                     case BrokerIAServiceMessageType.RobotHumanInteraction:
                         // abort game
-                        this.endGame(254);
+                        this._captureInteraction = false;
+                        this._tcpConnections.get(NetworkClient.IAService)?.write(
+                            new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
+                        );
+                        this._soundGenerator.playSound(SoundScene.HumanInteraction);
+                        this.endGame(GameEndState.Error, false);
+                        break;
+                    case BrokerIAServiceMessageType.NoCameraFound:
+                        // abort game
+                        this.endGame(GameEndState.Error);
+                        break;
+                    case BrokerIAServiceMessageType.NoGridFound:
+                        this._soundGenerator.playSound(SoundScene.NoCamera);
+                        this._serialPort.write(new ServerNetworkMessage(SerialMessageType.AlignCamera).getMessage());
+                        break;
                     default:
                         break;
                 }
@@ -169,8 +209,13 @@ export default class GameHandler {
         }
     }
 
-    private endGame(endState: GameEndState): void {
+    private endGame(endState: GameEndState, playSound: boolean = true): void {
         this._game.isRunning = false;
+        this._captureInteraction = false;
+
+        if (playSound) {
+            this.playSoundEndState(endState);
+        }
 
         this._tcpConnections.get(NetworkClient.GameClient)?.write(
             new ServerNetworkMessage(BrokerClientMessageType.EndGame, [this.gameEndStateToClientPayload(endState)]).getMessage()
@@ -185,29 +230,68 @@ export default class GameHandler {
         this._tcpConnections.clear();
     }
 
-    private checkGameState(): void {
+    private checkGameState(): boolean {
         // check if someone has one this game
         if(this._game.checkForWin(this._game.currentPlayer)) {
             this.endGame(GameEndState.Regular);
+            return false;
         } else {
             if (this._game.getValidMoves(this._game.map).length < 1) {
                 // draw
                 this.endGame(GameEndState.Draw);
+                return false;
             }
             // check if stoneCounter is 0
             if(this._game.dispenserCurrentStorage == 0) {
-                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.StonesEmpty));
+                this._soundGenerator.playSound(SoundScene.DispenserEmpty);
+                this._serialPort.write(new ServerNetworkMessage(SerialMessageType.StonesEmpty).getMessage());
             }
             this._game.nextPlayer();
+            return true;
+        }
+    }
+
+    private playSoundEndState(endState: GameEndState): void {
+        switch (endState) {
+            case GameEndState.Regular:
+                switch (this._game.players.get(this._game.currentPlayer)) {
+                    case GamePlayer.Human:
+                        this._soundGenerator.playSound(SoundScene.RobotLostGame);
+                        break;
+                
+                    case GamePlayer.KI:
+                        this._soundGenerator.playSound(SoundScene.RobotWonGame);
+                        break;
+                }
+                break;
+            case GameEndState.Draw:
+                this._soundGenerator.playSound(SoundScene.Draw);
+                break;
+            case GameEndState.Error:
+                this._soundGenerator.playSound(SoundScene.Error);
+                break;
         }
     }
 
     private handleClientMove(column: number): void {
         this._game.move(column, this._game.currentPlayer);
+        this._imageDataProcessor.updateColorGrid(column, this._game.players.get(this._game.currentPlayer));
+        this._captureInteraction = true;
         this._tcpConnections.get(NetworkClient.IAService)?.write(
             new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
         );
+        console.log("Move send to robot: " + column);
+
+        if (this._game.amountOfMovesMade <= 1 && this._game.players.get(this._game.currentPlayer) === GamePlayer.KI) {
+            this._soundGenerator.playSound(SoundScene.FirstRobotMove);
+        }
+
         this._serialPort.write(new ServerNetworkMessage(SerialMessageType.RobotMove, [column]).getMessage());
+        this._tcpConnections.get(NetworkClient.GameClient)?.write(
+            new ServerNetworkMessage(BrokerClientMessageType.Move, [
+                column, utils.getKeyFromValue(GamePlayer.KI, this._game.players)
+            ]).getMessage()
+        );
     }
 
     private sendMoveRequest(): void {
@@ -225,6 +309,7 @@ export default class GameHandler {
                 );
                 break;
             case GamePlayer.KI:
+                console.log("send move request to client");
                 // ToDo: remove magic number
                 // send move request to robot
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.Request, [1]).getMessage());
@@ -240,13 +325,20 @@ export default class GameHandler {
     }
 
     private handleGridMessage(payload: Array<number>): void {
+        console.log("handle grid message");
         const colorGrid: Array<ColorCode> = payload;
+        console.log(utils.getMatrixFromArray(colorGrid, 7));
         if(this._game.isRunning) {
             // Error detection
             if (!this._imageDataProcessor.isColorGridValid(colorGrid, this._game.players.get(this._game.currentPlayer))) {
-                this._tcpConnections.get(NetworkClient.IAService)?.write(
-                    new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
-                );
+                console.log("grid is not valid");
+                (async () => {
+                    const msToWait: number = 500;
+                    await utils.delay(msToWait);
+                    this._tcpConnections.get(NetworkClient.IAService)?.write(
+                        new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                    );
+                })();
                 return;
             }
 
@@ -254,13 +346,16 @@ export default class GameHandler {
             // check if there are changes in the grid
             const column: number = this._game.getMoveFromGrid(gameGrid);
             if (column !== -1) {
-                this._tcpConnections.get(NetworkClient.IAService)?.write(
-                    new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
-                );
                 this._game.move(column, this._game.currentPlayer);
+                
+                if (this._game.amountOfMovesMade <= 1 && this._game.players.get(this._game.currentPlayer) === GamePlayer.Human) {
+                    this._soundGenerator.playSound(SoundScene.FirstHumanMove);
+                }
+
+                this._imageDataProcessor.updateColorGrid(column, this._game.players.get(this._game.currentPlayer));
                 // send column to robot
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.HumanMove, [column]).getMessage());
-                
+                console.log("send column to client");
                 // send column to client
                 this._tcpConnections.get(NetworkClient.GameClient)?.write(
                     new ServerNetworkMessage(BrokerClientMessageType.Move, [
@@ -268,13 +363,26 @@ export default class GameHandler {
                     ]).getMessage()
                 );
 
-                this.checkGameState();
+                if(this.checkGameState()) {
+                    this.sendMoveRequest();
+                }
+            } else {
+                console.log("can not detect move from grid");
+                (async () => {
+                    const msToWait: number = 500;
+                    await utils.delay(msToWait);
+                    this._tcpConnections.get(NetworkClient.IAService)?.write(
+                        new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureGrid).getMessage()
+                    );
+                })();
             }
         } else {
             // check if grid is empty
             if (colorGrid.some((stone: ColorCode) => stone !== ColorCode.Empty)) {
                 // grid is not empty
                 // send "CleanGrid" message to roboter
+                console.log("Grid is not empty");
+                this._soundGenerator.playSound(SoundScene.FullGrid);
                 this._serialPort.write(new ServerNetworkMessage(SerialMessageType.GridNotEmpty).getMessage());
             } else {
                 // grid is empty
@@ -306,14 +414,20 @@ export default class GameHandler {
         this._game = new Game(width, height, dispenserCapacity, sequence, difficulty);
         this._imageDataProcessor = new ImageDataProcessor(this._game.players, height, width);
 
+        this._soundGenerator.playSound(SoundScene.StartGame);
+
         const imageAnalysisArguments: Array<string> = [
             '--height ' + this._config.boardHeight, 
             '--width ' + this._config.boardWidth,
+            '-hid ' + 'True',
             '--ip ' + this._config.bindingAddress,
             '--port ' + this._config.port
         ];
-
-        this.initImageAnalysisProcess(imageAnalysisArguments);
+        (async () => {
+            const msToWait: number = 2000;
+            await utils.delay(msToWait);
+            this.initImageAnalysisProcess(imageAnalysisArguments);
+        })();
     }
 
     private gameEndStateToClientPayload(endState: GameEndState): number {

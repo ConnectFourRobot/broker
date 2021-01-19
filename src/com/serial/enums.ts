@@ -10,7 +10,9 @@ enum SerialMessageType {
     EndGame = 9,
     Abort = 10,
     StonesEmpty = 11,
-    StonesFull = 12
+    StonesFull = 12,
+    AlignCamera = 13,
+	AlingCameraDone = 14
 }
 
 export {SerialMessageType}
