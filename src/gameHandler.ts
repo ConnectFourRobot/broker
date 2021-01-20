@@ -285,6 +285,7 @@ export default class GameHandler {
             this._tcpConnections.get(NetworkClient.IAService)?.write(
                 new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
             );
+	    console.log('monitorRobot');
         }
 
         console.log("Move send to robot: " + column);
