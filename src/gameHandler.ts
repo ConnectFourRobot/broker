@@ -183,6 +183,7 @@ export default class GameHandler {
                             this._tcpConnections.get(NetworkClient.IAService)?.write(
                                 new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureInteractionHeartbeat).getMessage()
                             );
+                            console.log('Heartbeat');
                         }
                         break;
                     case BrokerIAServiceMessageType.RobotHumanInteraction:
