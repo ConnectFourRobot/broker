@@ -277,9 +277,13 @@ export default class GameHandler {
         this._game.move(column, this._game.currentPlayer);
         this._imageDataProcessor.updateColorGrid(column, this._game.players.get(this._game.currentPlayer));
         this._captureInteraction = true;
-        this._tcpConnections.get(NetworkClient.IAService)?.write(
-            new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
-        );
+
+        if (this._config.serialPort.monitorRobot == '1') {
+            this._tcpConnections.get(NetworkClient.IAService)?.write(
+                new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
+            );
+        }
+        
         console.log("Move send to robot: " + column);
 
         if (this._game.amountOfMovesMade <= 1 && this._game.players.get(this._game.currentPlayer) === GamePlayer.KI) {
