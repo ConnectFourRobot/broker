@@ -7,7 +7,8 @@ This service handles a game and manages the communications of the services.
 Following packages are required before installing the service:
 
 * node (10.x)
-* build-essential
+* build-essential (just if you want to use the broker as a service)
+* mpg123
 
 ### Installation
 
