@@ -125,13 +125,15 @@ export default class GameHandler {
                 this.endGame(GameEndState.Error);
                 break;
             case SerialMessageType.MoveDone:
-                this._captureInteraction = false;
-                this._tcpConnections.get(NetworkClient.IAService)?.write(
-                    new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
-                );
-                this._game.dispenserCurrentStorage--;
-                if(this.checkGameState()) {
-                    this.sendMoveRequest();
+                if(this._game.players.get(this._game.currentPlayer) === GamePlayer.KI) {
+                    this._captureInteraction = false;
+                    this._tcpConnections.get(NetworkClient.IAService)?.write(
+                        new ServerNetworkMessage(BrokerIAServiceMessageType.StopCapture).getMessage()
+                    );
+                    this._game.dispenserCurrentStorage--;
+                    if(this.checkGameState()) {
+                        this.sendMoveRequest();
+                    }
                 }
                 break;
             case SerialMessageType.StonesFull:
@@ -283,7 +285,7 @@ export default class GameHandler {
                 new ServerNetworkMessage(BrokerIAServiceMessageType.CaptureRobotHuman).getMessage()
             );
         }
-        
+
         console.log("Move send to robot: " + column);
 
         if (this._game.amountOfMovesMade <= 1 && this._game.players.get(this._game.currentPlayer) === GamePlayer.KI) {
