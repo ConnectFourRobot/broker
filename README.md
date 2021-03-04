@@ -1,4 +1,4 @@
-# Vier-Gewinnt-Roboter (Broker)
+# ConnectFourRobot (Broker)
 
 This service handles a game and manages the communications of the services.
 
@@ -13,7 +13,7 @@ Following packages are required before installing the service:
 ### Installation
 
 ````
-git clone git@gitlab.oth-regensburg.de:giv31075/vgr-broker.git
+git@github.com:ConnectFourRobot/broker.git
 cd vgr-broker
 ./dev-tools/install.sh
 ````
